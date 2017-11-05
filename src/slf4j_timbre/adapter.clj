@@ -11,12 +11,14 @@
 		[org.slf4j.helpers FormattingTuple MessageFormatter]
 		org.slf4j.Marker))
 
+#_(set! *warn-on-reflection* true)
+
 (defn -init
 	[logger-name]
 	[[] logger-name])
 
 (defn -getName
-	[this]
+	[^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this]
 	(.state this))
 
 (defmacro define-methods
@@ -34,17 +36,17 @@
 			      file-sym   (gensym "file")
 			      line-sym   (gensym "line")]
 
-				`(defn ~func-sym [this# & ~args-sym]
+				`(defn ~func-sym [^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this# & ~args-sym]
 					(let [~ns-str-sym (.getName this#)]
 						(when (timbre/log? ~level ~ns-str-sym)
-							(let [context#    ~(when with-marker? `(when-let [marker# (first ~args-sym)] {:marker (.getName marker#)}))
+							(let [context#    ~(when with-marker? `(when-let [marker# (first ~args-sym)] {:marker (.getName ^Marker marker#)}))
 							      ; we do a nil check above because log4j-over-slf4j passes a null Marker instead of calling the correct (Marker-free) method
 							      ~args-sym   ~(if with-marker? `(rest ~args-sym) args-sym)
 							      stack#      (.getStackTrace (Thread/currentThread))
-							      caller#     (second (drop-while #(not= (.getName (.getClass this#)) (.getClassName %)) stack#))
+							      ^StackTraceElement caller#     (second (drop-while #(not= (.getName ^Class (.getClass this#)) (.getClassName ^StackTraceElement %)) stack#))
 							      ~file-sym   (.getFileName caller#)
 							      ~line-sym   (.getLineNumber caller#)]
-								(timbre/with-context context#
+								(timbre/with-context (merge timbre/*context* context#)
 									~(case signature
 										"-String"
 										`(let [[msg#] ~args-sym]
@@ -83,17 +85,17 @@
 (define-methods "-trace" :trace)
 
 (defn -isErrorEnabled
-	([this]   (timbre/log? :error (.getName this)))
-	([this _] (timbre/log? :error (.getName this))))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this]   (timbre/log? :error (.getName this)))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this _] (timbre/log? :error (.getName this))))
 (defn -isWarnEnabled
-	([this]   (timbre/log? :warn (.getName this)))
-	([this _] (timbre/log? :warn (.getName this))))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this]   (timbre/log? :warn (.getName this)))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this _] (timbre/log? :warn (.getName this))))
 (defn -isInfoEnabled
-	([this]   (timbre/log? :info (.getName this)))
-	([this _] (timbre/log? :info (.getName this))))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this]   (timbre/log? :info (.getName this)))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this _] (timbre/log? :info (.getName this))))
 (defn -isDebugEnabled
-	([this]   (timbre/log? :debug (.getName this)))
-	([this _] (timbre/log? :debug (.getName this))))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this]   (timbre/log? :debug (.getName this)))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this _] (timbre/log? :debug (.getName this))))
 (defn -isTraceEnabled
-	([this]   (timbre/log? :trace (.getName this)))
-	([this _] (timbre/log? :trace (.getName this))))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this]   (timbre/log? :trace (.getName this)))
+	([^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this _] (timbre/log? :trace (.getName this))))
