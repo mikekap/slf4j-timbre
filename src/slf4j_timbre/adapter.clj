@@ -31,22 +31,27 @@
 		~@(for [signature    ["-String" "-String-Object" "-String-Object-Object" "-String-Object<>" "-String-Throwable"]
 		        with-marker? [false true]]
 			(let [func-sym   (symbol (str method-name (when with-marker? "-Marker") signature))
+						this-sym   (with-meta (gensym "this") {:tag 'com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter})
 			      args-sym   (gensym "args")
+						ctx-sym    (gensym "context")
 			      ns-str-sym (gensym "ns-str")
-			      file-sym   (gensym "file")
-			      line-sym   (gensym "line")]
+						file-sym   (gensym "file")
+						line-sym   (gensym "line")]
 
-				`(defn ~func-sym [^com.github.fzakaria.slf4j.timbre.TimbreLoggerAdapter this# & ~args-sym]
-					(let [~ns-str-sym (.getName this#)]
+				`(defn ~func-sym [~this-sym & ~args-sym]
+					(let [~ns-str-sym (.getName ~this-sym)]
 						(when (timbre/log? ~level ~ns-str-sym)
-							(let [context#    ~(when with-marker? `(when-let [marker# (first ~args-sym)] {:marker (.getName ^Marker marker#)}))
-							      ; we do a nil check above because log4j-over-slf4j passes a null Marker instead of calling the correct (Marker-free) method
-							      ~args-sym   ~(if with-marker? `(rest ~args-sym) args-sym)
-							      stack#      (.getStackTrace (Thread/currentThread))
-							      ^StackTraceElement caller#     (second (drop-while #(not= (.getName ^Class (.getClass this#)) (.getClassName ^StackTraceElement %)) stack#))
-							      ~file-sym   (.getFileName caller#)
-							      ~line-sym   (.getLineNumber caller#)]
-								(timbre/with-context (merge timbre/*context* context#)
+							(let [~ctx-sym    ~(when with-marker? `(when-let [marker# (first ~args-sym)] {:marker (.getName ^Marker marker#)}))
+										; we do a nil check above because log4j-over-slf4j passes a null Marker instead of calling the correct (Marker-free) method
+										~args-sym   ~(if with-marker? `(rest ~args-sym) args-sym)
+										{~file-sym :?file ~line-sym :?line} ~(if (timbre/level>= level :warn)
+																													 `(let [stack#      (.getStackTrace (Thread/currentThread))
+																																	^StackTraceElement caller#     (second (drop-while #(not= (.getName ^Class (.getClass ~this-sym)) (.getClassName ^StackTraceElement %)) stack#))
+																																	file#   (some-> caller# .getFileName)
+																																	line#   (some-> caller# .getLineNumber)]
+																															{:?file file# :?line line#})
+																													 nil)]
+								(~@(if with-marker? `[timbre/with-context (merge timbre/*context* ~ctx-sym)] `[do])
 									~(case signature
 										"-String"
 										`(let [[msg#] ~args-sym]
