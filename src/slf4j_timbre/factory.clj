@@ -12,11 +12,12 @@
 	[[] (atom {})])
 
 (defn -getLogger
-	[this logger-name]
-	(let [loggers (.state this) loggers-map @loggers]
-		(if-let [existing (get loggers-map logger-name)]
-			existing
-			(let [new-logger (TimbreLoggerAdapter. logger-name)]
-				(if (compare-and-set! loggers loggers-map (assoc loggers-map logger-name new-logger))
-					new-logger
-					(get @loggers logger-name))))))
+  [this logger-name]
+  (let [loggers (.state this) loggers-map @loggers]
+    (if-let [existing (get loggers-map logger-name)]
+      existing
+      (let [loggers-map (swap! loggers
+                               update
+                               logger-name
+                               (fn [v] (or v (TimbreLoggerAdapter. logger-name))))]
+        (get loggers-map logger-name)))))
