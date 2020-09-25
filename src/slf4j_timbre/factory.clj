@@ -13,7 +13,9 @@
 
 (defn -getLogger
   [this logger-name]
-  (let [loggers (.state this) loggers-map @loggers]
+  (let [loggers (.state this) loggers-map @loggers preload (System/getProperty "timbre.preload")]
+    (when preload
+      (#'clojure.core/serialized-require (symbol preload)))
     (if-let [existing (get loggers-map logger-name)]
       existing
       (let [loggers-map (swap! loggers
